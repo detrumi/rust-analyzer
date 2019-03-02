@@ -45,8 +45,9 @@ pub enum Leaf {
     Literal(Literal),
     Punct(Punct),
     Ident(Ident),
+    Expr(Expr),
 }
-impl_froms!(Leaf: Literal, Punct, Ident);
+impl_froms!(Leaf: Literal, Punct, Ident, Expr);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Subtree {
@@ -83,6 +84,11 @@ pub enum Spacing {
 pub struct Ident {
     pub text: SmolStr,
     pub id: TokenId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Expr {
+    pub text: SmolStr,
 }
 
 impl fmt::Display for TokenTree {
@@ -126,6 +132,7 @@ impl fmt::Display for Leaf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Leaf::Ident(it) => fmt::Display::fmt(it, f),
+            Leaf::Expr(it) => fmt::Display::fmt(it, f),
             Leaf::Literal(it) => fmt::Display::fmt(it, f),
             Leaf::Punct(it) => fmt::Display::fmt(it, f),
         }
@@ -133,6 +140,12 @@ impl fmt::Display for Leaf {
 }
 
 impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.text, f)
+    }
+}
+
+impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.text, f)
     }

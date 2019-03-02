@@ -44,6 +44,9 @@ fn parse_subtree(tt: &tt::Subtree) -> Option<crate::Subtree> {
                 tt::Leaf::Ident(tt::Ident { text, id: _ }) => {
                     crate::Leaf::from(crate::Ident { text: text.clone() }).into()
                 }
+                tt::Leaf::Expr(tt::Expr { text }) => {
+                    crate::Leaf::from(crate::Expr { text: text.clone() }).into()
+                }
                 tt::Leaf::Literal(tt::Literal { text }) => {
                     crate::Leaf::from(crate::Literal { text: text.clone() }).into()
                 }

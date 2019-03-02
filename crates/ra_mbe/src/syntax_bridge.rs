@@ -150,6 +150,10 @@ impl TtTokenSource {
                 let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
                 TtToken { kind, is_joint_to_next: false, text: ident.text.clone() }
             }
+            tt::Leaf::Expr(expr) => {
+                let kind = SyntaxKind::STRING;
+                TtToken { kind, is_joint_to_next: false, text: expr.text.clone() }
+            }
         };
         self.tokens.push(tok)
     }

@@ -119,6 +119,13 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Option<Bindings>
                                 Binding::Simple(tt::Leaf::from(ident).into()),
                             );
                         }
+                        "expr" => {
+                            let expr = input.eat_expr()?.clone();
+                            res.inner.insert(
+                                text.clone(),
+                                Binding::Simple(tt::Leaf::from(expr).into()),
+                            );
+                        }
                         _ => return None,
                     }
                 }
@@ -187,6 +194,10 @@ fn expand_tt(
         crate::TokenTree::Leaf(leaf) => match leaf {
             crate::Leaf::Ident(ident) => {
                 tt::Leaf::from(tt::Ident { text: ident.text.clone(), id: TokenId::unspecified() })
+                    .into()
+            }
+            crate::Leaf::Expr(expr) => {
+                tt::Leaf::from(tt::Expr { text: expr.text.clone() })
                     .into()
             }
             crate::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),

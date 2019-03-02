@@ -31,6 +31,13 @@ impl<'a> TtCursor<'a> {
         }
     }
 
+    pub(crate) fn at_expr(&mut self) -> Option<&'a tt::Expr> {
+        match self.current() {
+            Some(tt::TokenTree::Leaf(tt::Leaf::Expr(i))) => Some(i),
+            _ => None,
+        }
+    }
+
     pub(crate) fn at_ident(&mut self) -> Option<&'a tt::Ident> {
         match self.current() {
             Some(tt::TokenTree::Leaf(tt::Leaf::Ident(i))) => Some(i),
@@ -75,6 +82,14 @@ impl<'a> TtCursor<'a> {
 
     pub(crate) fn eat_ident(&mut self) -> Option<&'a tt::Ident> {
         if let Some(i) = self.at_ident() {
+            self.bump();
+            return Some(i);
+        }
+        None
+    }
+
+    pub(crate) fn eat_expr(&mut self) -> Option<&'a tt::Expr> {
+        if let Some(i) = self.at_expr() {
             self.bump();
             return Some(i);
         }

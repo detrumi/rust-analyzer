@@ -64,8 +64,9 @@ pub(crate) enum Leaf {
     Punct(Punct),
     Ident(Ident),
     Var(Var),
+    Expr(Expr),
 }
-impl_froms!(Leaf: Literal, Punct, Ident, Var);
+impl_froms!(Leaf: Literal, Punct, Ident, Var, Expr);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Subtree {
@@ -94,6 +95,11 @@ pub(crate) struct Literal {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Ident {
+    pub(crate) text: SmolStr,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Expr {
     pub(crate) text: SmolStr,
 }
 
@@ -270,6 +276,19 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
         assert_expansion(&rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
         assert_expansion(&rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    }
+
+    #[test]
+    fn test_expr() {
+        let rules = create_rules(
+            "
+        macro_rules! foo {
+            ($ i:expr) => ( fn bar() { $ i; } )
+        }
+            ",
+        );
+
+        assert_expansion(&rules, "foo! { 2 + 2 * baz(3).quux() }", "fn bar() { (2 + 2 * baz(3).quux()); }")
     }
 
     #[test]
