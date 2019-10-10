@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{db::RootDatabase, FileId};
-use hir::{HirDisplay, SourceAnalyzer, Ty};
+use hir::{ApplicationTy, HirDisplay, SourceAnalyzer, Ty, TypeCtor, TypeWalk};
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
@@ -104,7 +104,15 @@ fn get_pat_type_hints(
         .map(|(range, pat_type)| InlayHint {
             range,
             kind: InlayKind::TypeHint,
-            label: pat_type.display(db).to_string().into(),
+            label: pat_type
+                .fold(&mut |ty| match ty {
+                    Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { .. }, .. }) => Ty::Unknown,
+                    _ => ty,
+                })
+                .display(db)
+                .to_string()
+                .replace("{unknown}", "_")
+                .into(),
         })
         .collect()
 }
@@ -162,8 +170,11 @@ fn get_node_displayable_type(
     node_pat: &ast::Pat,
 ) -> Option<Ty> {
     analyzer.type_of_pat(db, node_pat).and_then(|resolved_type| {
-        if let Ty::Apply(_) = resolved_type {
-            Some(resolved_type)
+        if let Ty::Apply(ref ty) = resolved_type {
+            match ty.ctor {
+                TypeCtor::Closure { .. } => None,
+                _ => Some(resolved_type),
+            }
         } else {
             None
         }
