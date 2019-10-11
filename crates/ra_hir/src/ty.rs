@@ -20,7 +20,7 @@ use crate::{
     db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, Crate, DefWithBody, GenericParams,
     HasGenericParams, Name, Trait, TypeAlias,
 };
-use display::{HirDisplay, HirFormatter};
+use display::{HirDisplay, HirFormat};
 
 pub(crate) use autoderef::autoderef;
 pub(crate) use infer::{infer_query, InferTy, InferenceResult};
@@ -769,13 +769,13 @@ impl TypeWalk for Ty {
 }
 
 impl HirDisplay for &Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut impl HirFormat) -> fmt::Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for ApplicationTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut impl HirFormat) -> fmt::Result {
         match self.ctor {
             TypeCtor::Bool => write!(f, "bool")?,
             TypeCtor::Char => write!(f, "char")?,
@@ -876,7 +876,7 @@ impl HirDisplay for ApplicationTy {
 }
 
 impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut impl HirFormat) -> fmt::Result {
         let trait_name = self
             .associated_ty
             .parent_trait(f.db)
