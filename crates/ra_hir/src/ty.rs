@@ -844,7 +844,7 @@ impl HirDisplay for ApplicationTy {
                 write!(f, "{}", name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
+                    f.write_nested(|f| f.write_joined(&*self.parameters.0, ", "))?;
                     write!(f, ">")?;
                 }
             }
@@ -866,7 +866,7 @@ impl HirDisplay for ApplicationTy {
                     .callable_sig(f.db)
                     .expect("first closure parameter should contain signature");
                 write!(f, "|")?;
-                f.write_joined(sig.params(), ", ")?;
+                f.write_nested(|f| f.write_joined(sig.params(), ", "))?;
                 write!(f, "| -> {}", sig.ret().display(f.db))?;
             }
         }

@@ -7,6 +7,7 @@ use crate::db::HirDatabase;
 pub struct HirFormatter<'a, 'b, DB> {
     pub db: &'a DB,
     fmt: &'a mut fmt::Formatter<'b>,
+    level: u32,
 }
 
 pub trait HirDisplay {
@@ -15,7 +16,14 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self)
+        self.display_compact(db, std::u32::MAX)
+    }
+
+    fn display_compact<'a, DB>(&'a self, db: &'a DB, levels: u32) -> HirDisplayWrapper<'a, DB, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper(db, self, levels)
     }
 }
 
@@ -39,13 +47,27 @@ where
         Ok(())
     }
 
+    pub fn write_nested<F>(&mut self, nested: F) -> fmt::Result
+    where
+        F: FnOnce(&mut Self) -> fmt::Result,
+    {
+        if self.level > 0 {
+            self.level -= 1;
+            nested(self)?;
+            self.level += 1;
+        } else {
+            write!(self, "…")?;
+        }
+        Ok(())
+    }
+
     /// This allows using the `write!` macro directly with a `HirFormatter`.
     pub fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
         fmt::write(self.fmt, args)
     }
 }
 
-pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T);
+pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, u32);
 
 impl<'a, DB, T> fmt::Display for HirDisplayWrapper<'a, DB, T>
 where
@@ -53,6 +75,6 @@ where
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.1.hir_fmt(&mut HirFormatter { db: self.0, fmt: f })
+        self.1.hir_fmt(&mut HirFormatter { db: self.0, level: self.2, fmt: f })
     }
 }

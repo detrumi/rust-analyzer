@@ -104,7 +104,7 @@ fn get_pat_type_hints(
         .map(|(range, pat_type)| InlayHint {
             range,
             kind: InlayKind::TypeHint,
-            label: pat_type.display(db).to_string().into(),
+            label: pat_type.display_compact(db, 0).to_string().into(),
         })
         .collect()
 }
