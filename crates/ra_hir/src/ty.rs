@@ -14,7 +14,7 @@ pub(crate) mod display;
 
 use std::ops::Deref;
 use std::sync::Arc;
-use std::{fmt, iter, mem};
+use std::{iter, mem};
 
 use crate::{
     db::HirDatabase,
@@ -23,7 +23,7 @@ use crate::{
     util::make_mut_slice,
     Adt, Crate, DefWithBody, FloatTy, IntTy, Mutability, Name, Trait, TypeAlias, Uncertain,
 };
-use display::{HirDisplay, HirFormatter};
+use display::{HirDisplay, HirDisplayTree, HirFormatter};
 
 pub(crate) use autoderef::autoderef;
 pub(crate) use infer::{infer_query, InferTy, InferenceResult};
@@ -768,51 +768,59 @@ impl TypeWalk for Ty {
 }
 
 impl HirDisplay for &Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for ApplicationTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        match self.ctor {
-            TypeCtor::Bool => write!(f, "bool")?,
-            TypeCtor::Char => write!(f, "char")?,
-            TypeCtor::Int(t) => write!(f, "{}", t)?,
-            TypeCtor::Float(t) => write!(f, "{}", t)?,
-            TypeCtor::Str => write!(f, "str")?,
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
+        Ok(match self.ctor {
+            TypeCtor::Bool => HirDisplayTree::text("bool"),
+            TypeCtor::Char => HirDisplayTree::text("char"),
+            TypeCtor::Int(t) => HirDisplayTree::display(t),
+            TypeCtor::Float(t) => HirDisplayTree::display(t),
+            TypeCtor::Str => HirDisplayTree::text("str"),
             TypeCtor::Slice => {
                 let t = self.parameters.as_single();
-                write!(f, "[{}]", t.display(f.db))?;
+                HirDisplayTree::collapsible("[", t.hir_fmt(f)?, "]")
             }
             TypeCtor::Array => {
                 let t = self.parameters.as_single();
-                write!(f, "[{};_]", t.display(f.db))?;
+                HirDisplayTree::collapsible("[", t.hir_fmt(f)?, ";_]")
             }
             TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();
-                write!(f, "*{}{}", m.as_keyword_for_ptr(), t.display(f.db))?;
+                HirDisplayTree::sequence()
+                    .push_str("*")
+                    .push_str(m.as_keyword_for_ptr())
+                    .push(t.hir_fmt(f)?)
             }
             TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
-                write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
+                HirDisplayTree::sequence()
+                    .push_str("&")
+                    .push_str(m.as_keyword_for_ref())
+                    .push(t.hir_fmt(f)?)
             }
-            TypeCtor::Never => write!(f, "!")?,
+            TypeCtor::Never => HirDisplayTree::text("!"),
             TypeCtor::Tuple { .. } => {
                 let ts = &self.parameters;
                 if ts.len() == 1 {
-                    write!(f, "({},)", ts[0].display(f.db))?;
+                    HirDisplayTree::collapsible("(", ts[0].hir_fmt(f)?, ",)")
                 } else {
-                    write!(f, "(")?;
-                    f.write_joined(&*ts.0, ", ")?;
-                    write!(f, ")")?;
+                    HirDisplayTree::collapsible("(", f.write_joined(&*ts.0, ", ")?, ")")
                 }
             }
             TypeCtor::FnPtr { .. } => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
-                write!(f, "fn(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                HirDisplayTree::sequence()
+                    .push(HirDisplayTree::collapsible(
+                        "fn(",
+                        f.write_joined(sig.params(), ", ")?,
+                        ")",
+                    ))
+                    .push(HirDisplayTree::collapsible(" -> ", sig.ret().hir_fmt(f)?, ""))
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def);
@@ -821,18 +829,27 @@ impl HirDisplay for ApplicationTy {
                     CallableDef::Struct(s) => s.name(f.db).unwrap_or_else(Name::missing),
                     CallableDef::EnumVariant(e) => e.name(f.db).unwrap_or_else(Name::missing),
                 };
+                let mut result = HirDisplayTree::sequence();
                 match def {
-                    CallableDef::Function(_) => write!(f, "fn {}", name)?,
-                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
+                    CallableDef::Function(_) => result = result.push_str("fn ").push_display(name),
+                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {
+                        result = result.push_display(name)
+                    }
                 }
                 if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+                    result = result.push(HirDisplayTree::collapsible(
+                        "<",
+                        f.write_joined(&*self.parameters.0, ", ")?,
+                        ">",
+                    ));
                 }
-                write!(f, "(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                result
+                    .push(HirDisplayTree::collapsible(
+                        "(",
+                        f.write_joined(sig.params(), ", ")?,
+                        ")",
+                    ))
+                    .push(HirDisplayTree::collapsible(" -> ", sig.ret().hir_fmt(f)?, ""))
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {
@@ -841,12 +858,15 @@ impl HirDisplay for ApplicationTy {
                     Adt::Enum(e) => e.name(f.db),
                 }
                 .unwrap_or_else(Name::missing);
-                write!(f, "{}", name)?;
+                let mut result = HirDisplayTree::sequence().push_display(name);
                 if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+                    result = result.push(HirDisplayTree::collapsible(
+                        "<",
+                        f.write_joined(&*self.parameters.0, ", ")?,
+                        ">",
+                    ));
                 }
+                result
             }
             TypeCtor::AssociatedType(type_alias) => {
                 let trait_name = type_alias
@@ -854,55 +874,70 @@ impl HirDisplay for ApplicationTy {
                     .and_then(|t| t.name(f.db))
                     .unwrap_or_else(Name::missing);
                 let name = type_alias.name(f.db);
-                write!(f, "{}::{}", trait_name, name)?;
+                let mut result = HirDisplayTree::sequence()
+                    .push_display(trait_name)
+                    .push_str("::")
+                    .push_display(name);
                 if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+                    result = result.push(HirDisplayTree::collapsible(
+                        "<",
+                        f.write_joined(&*self.parameters.0, ", ")?,
+                        ">",
+                    ));
                 }
+                result
             }
             TypeCtor::Closure { .. } => {
                 let sig = self.parameters[0]
                     .callable_sig(f.db)
                     .expect("first closure parameter should contain signature");
-                write!(f, "|")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, "| -> {}", sig.ret().display(f.db))?;
+                HirDisplayTree::sequence()
+                    .push(HirDisplayTree::collapsible(
+                        "|",
+                        f.write_joined(sig.params(), ", ")?,
+                        "|",
+                    ))
+                    .push(HirDisplayTree::collapsible(" -> ", sig.ret().hir_fmt(f)?, ""))
             }
-        }
-        Ok(())
+        })
     }
 }
 
 impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
         let trait_name = self
             .associated_ty
             .parent_trait(f.db)
             .and_then(|t| t.name(f.db))
             .unwrap_or_else(Name::missing);
-        write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_name,)?;
+        let mut result = HirDisplayTree::sequence()
+            .push_str("<")
+            .push(self.parameters[0].hir_fmt(f)?)
+            .push_str(" as ")
+            .push_display(trait_name);
         if self.parameters.len() > 1 {
-            write!(f, "<")?;
-            f.write_joined(&self.parameters[1..], ", ")?;
-            write!(f, ">")?;
+            result = result.push(HirDisplayTree::collapsible(
+                "<",
+                f.write_joined(&self.parameters[1..], ", ")?,
+                ">",
+            ));
         }
-        write!(f, ">::{}", self.associated_ty.name(f.db))?;
-        Ok(())
+        Ok(result.push_str(">::").push_display(self.associated_ty.name(f.db)))
     }
 }
 
 impl HirDisplay for Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        match self {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
+        Ok(match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
-            Ty::Param { name, .. } => write!(f, "{}", name)?,
-            Ty::Bound(idx) => write!(f, "?{}", idx)?,
+            Ty::Param { name, .. } => HirDisplayTree::display(name),
+            Ty::Bound(idx) => HirDisplayTree::sequence().push_str("?").push_display(idx),
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                let mut result = HirDisplayTree::sequence();
                 match self {
-                    Ty::Dyn(_) => write!(f, "dyn ")?,
-                    Ty::Opaque(_) => write!(f, "impl ")?,
+                    Ty::Dyn(_) => result = result.push_str("dyn "),
+                    Ty::Opaque(_) => result = result.push_str("impl "),
                     _ => unreachable!(),
                 };
                 // Note: This code is written to produce nice results (i.e.
@@ -917,22 +952,21 @@ impl HirDisplay for Ty {
                     match p {
                         GenericPredicate::Implemented(trait_ref) => {
                             if angle_open {
-                                write!(f, ">")?;
+                                result = result.push_str(">");
                             }
                             if !first {
-                                write!(f, " + ")?;
+                                result = result.push_str(" + ");
                             }
                             // We assume that the self type is $0 (i.e. the
                             // existential) here, which is the only thing that's
                             // possible in actual Rust, and hence don't print it
-                            write!(
-                                f,
-                                "{}",
-                                trait_ref.trait_.name(f.db).unwrap_or_else(Name::missing)
-                            )?;
+                            result = result.push_display(
+                                trait_ref.trait_.name(f.db).unwrap_or_else(Name::missing),
+                            );
                             if trait_ref.substs.len() > 1 {
-                                write!(f, "<")?;
-                                f.write_joined(&trait_ref.substs[1..], ", ")?;
+                                result = result
+                                    .push_str("<")
+                                    .push(f.write_joined(&trait_ref.substs[1..], ", ")?);
                                 // there might be assoc type bindings, so we leave the angle brackets open
                                 angle_open = true;
                             }
@@ -940,100 +974,99 @@ impl HirDisplay for Ty {
                         GenericPredicate::Projection(projection_pred) => {
                             // in types in actual Rust, these will always come
                             // after the corresponding Implemented predicate
-                            if angle_open {
-                                write!(f, ", ")?;
+                            result = if angle_open {
+                                result.push_str(", ")
                             } else {
-                                write!(f, "<")?;
                                 angle_open = true;
+                                result.push_str("<")
                             }
-                            let name = projection_pred.projection_ty.associated_ty.name(f.db);
-                            write!(f, "{} = ", name)?;
-                            projection_pred.ty.hir_fmt(f)?;
+                            .push_display(projection_pred.projection_ty.associated_ty.name(f.db))
+                            .push_str(" = ")
+                            .push(projection_pred.ty.hir_fmt(f)?);
                         }
                         GenericPredicate::Error => {
                             if angle_open {
                                 // impl Trait<X, {error}>
-                                write!(f, ", ")?;
+                                result = result.push_str(", ")
                             } else if !first {
                                 // impl Trait + {error}
-                                write!(f, " + ")?;
+                                result = result.push_str(" + ")
                             }
-                            p.hir_fmt(f)?;
+                            result = result.push(p.hir_fmt(f)?)
                         }
                     }
                     first = false;
                 }
                 if angle_open {
-                    write!(f, ">")?;
+                    result = result.push_str(">");
                 }
+                result
             }
-            Ty::Unknown => write!(f, "{{unknown}}")?,
-            Ty::Infer(..) => write!(f, "_")?,
-        }
-        Ok(())
+            Ty::Unknown => HirDisplayTree::text("{unknown}"),
+            Ty::Infer(..) => HirDisplayTree::text("_"),
+        })
     }
 }
 
 impl TraitRef {
-    fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
-        self.substs[0].hir_fmt(f)?;
-        if use_as {
-            write!(f, " as ")?;
-        } else {
-            write!(f, ": ")?;
-        }
-        write!(f, "{}", self.trait_.name(f.db).unwrap_or_else(Name::missing))?;
+    fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> display::Result {
+        let mut result = HirDisplayTree::sequence()
+            .push(self.substs[0].hir_fmt(f)?)
+            .push_str(if use_as { " as " } else { ": " })
+            .push_display(self.trait_.name(f.db).unwrap_or_else(Name::missing));
         if self.substs.len() > 1 {
-            write!(f, "<")?;
-            f.write_joined(&self.substs[1..], ", ")?;
-            write!(f, ">")?;
+            result = result.push(HirDisplayTree::collapsible(
+                "<",
+                f.write_joined(&self.substs[1..], ", ")?,
+                ">",
+            ));
         }
-        Ok(())
+
+        Ok(result)
     }
 }
 
 impl HirDisplay for TraitRef {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
         self.hir_fmt_ext(f, false)
     }
 }
 
 impl HirDisplay for &GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        match self {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
+        Ok(match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
-            GenericPredicate::Projection(projection_pred) => {
-                write!(f, "<")?;
-                projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
-                write!(
-                    f,
-                    ">::{} = {}",
-                    projection_pred.projection_ty.associated_ty.name(f.db),
-                    projection_pred.ty.display(f.db)
-                )?;
-            }
-            GenericPredicate::Error => write!(f, "{{error}}")?,
-        }
-        Ok(())
+            GenericPredicate::Projection(projection_pred) => HirDisplayTree::sequence()
+                .push_str("<")
+                .push(projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?)
+                .push_str(">::")
+                .push_display(projection_pred.projection_ty.associated_ty.name(f.db))
+                .push_str(" = ")
+                .push(projection_pred.ty.hir_fmt(f)?),
+            GenericPredicate::Error => HirDisplayTree::text("{error}"),
+        })
     }
 }
 
 impl HirDisplay for Obligation {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        match self {
-            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
-            Obligation::Projection(proj) => write!(
-                f,
-                "Normalize({} => {})",
-                proj.projection_ty.display(f.db),
-                proj.ty.display(f.db)
-            ),
-        }
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> display::Result {
+        Ok(match self {
+            Obligation::Trait(tr) => {
+                HirDisplayTree::collapsible("Implements(", tr.hir_fmt(f)?, ")")
+            }
+            Obligation::Projection(proj) => {
+                let contents = HirDisplayTree::sequence()
+                    .push(proj.projection_ty.hir_fmt(f)?)
+                    .push_str(" => ")
+                    .push(proj.ty.hir_fmt(f)?);
+                HirDisplayTree::collapsible("Normalize(", contents, ")")
+            }
+        })
     }
 }
