@@ -799,20 +799,23 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Never => write!(f, "!")?,
             TypeCtor::Tuple { .. } => {
-                let ts = &self.parameters;
-                if ts.len() == 1 {
-                    write!(f, "({},)", ts[0].display(f.db))?;
-                } else {
-                    write!(f, "(")?;
-                    f.write_joined(&*ts.0, ", ")?;
-                    write!(f, ")")?;
-                }
+                write!(f, "(")?;
+                f.write_nested(|f| {
+                    let ts = &self.parameters;
+                    if ts.len() == 1 {
+                        write!(f, "{},", ts[0].display(f.db))
+                    } else {
+                        f.write_joined(&*ts.0, ", ")
+                    }
+                })?;
+                write!(f, ")")?
             }
             TypeCtor::FnPtr { .. } => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
                 write!(f, "fn(")?;
-                f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                f.write_nested_joined(sig.params(), ", ")?;
+                write!(f, ") -> ")?;
+                f.write_nested(|f| write!(f, "{}", sig.ret().display(f.db)))?;
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def);
@@ -827,7 +830,7 @@ impl HirDisplay for ApplicationTy {
                 }
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
+                    f.write_nested_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
                 }
                 write!(f, "(")?;
@@ -844,7 +847,7 @@ impl HirDisplay for ApplicationTy {
                 write!(f, "{}", name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
-                    f.write_nested(|f| f.write_joined(&*self.parameters.0, ", "))?;
+                    f.write_nested_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
                 }
             }
@@ -866,7 +869,7 @@ impl HirDisplay for ApplicationTy {
                     .callable_sig(f.db)
                     .expect("first closure parameter should contain signature");
                 write!(f, "|")?;
-                f.write_nested(|f| f.write_joined(sig.params(), ", "))?;
+                f.write_nested_joined(sig.params(), ", ")?;
                 write!(f, "| -> {}", sig.ret().display(f.db))?;
             }
         }
@@ -947,7 +950,7 @@ impl HirDisplay for Ty {
                                 angle_open = true;
                             }
                             let name = projection_pred.projection_ty.associated_ty.name(f.db);
-                            write!(f, "{} = ", name)?;
+                            f.write_nested(|f| write!(f, "{} = ", name))?;
                             projection_pred.ty.hir_fmt(f)?;
                         }
                         GenericPredicate::Error => {

@@ -61,6 +61,14 @@ where
         Ok(())
     }
 
+    pub fn write_nested_joined<T: HirDisplay>(
+        &mut self,
+        iter: impl IntoIterator<Item = T>,
+        sep: &str,
+    ) -> fmt::Result {
+        self.write_nested(|f| f.write_joined(iter, sep))
+    }
+
     /// This allows using the `write!` macro directly with a `HirFormatter`.
     pub fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
         fmt::write(self.fmt, args)
