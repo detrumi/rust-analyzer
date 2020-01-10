@@ -7,6 +7,8 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
+use std::path::PathBuf;
+
 use rustc_hash::FxHashMap;
 
 use ra_project_model::CargoFeatures;
@@ -37,6 +39,8 @@ pub struct ServerConfig {
     pub cargo_watch_command: String,
     pub cargo_watch_all_targets: bool,
 
+    pub workspace_relative_path: PathBuf,
+
     /// For internal usage to make integrated tests faster.
     #[serde(deserialize_with = "nullable_bool_true")]
     pub with_sysroot: bool,
@@ -60,6 +64,7 @@ impl Default for ServerConfig {
             cargo_watch_args: Vec::new(),
             cargo_watch_command: "check".to_string(),
             cargo_watch_all_targets: true,
+            workspace_relative_path: PathBuf::default(),
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
             cargo_features: Default::default(),

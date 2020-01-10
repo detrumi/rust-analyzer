@@ -245,6 +245,11 @@
                     "type": "array",
                     "default": [],
                     "description": "List of features to activate"
+                },
+                "rust-analyzer.workspaceRelativePath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Relative path from workspace root to Cargo.toml"
                 }
             }
         },

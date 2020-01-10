@@ -82,8 +82,27 @@ pub fn main_loop(
         let workspaces = {
             let mut loaded_workspaces = Vec::new();
             for ws_root in &ws_roots {
+                eprintln!("ws_root = {:?}", ws_root.display());
+                eprintln!(
+                    "config.workspace_relative_path = {:?}",
+                    config.workspace_relative_path.display()
+                );
+                let mut root = ws_root.clone();
+                if config.workspace_relative_path.is_relative() {
+                    root.push(&config.workspace_relative_path);
+                } else {
+                    show_message(
+                        req::MessageType::Error,
+                        format!(
+                            "Workspace path should be relative: '{}'",
+                            config.workspace_relative_path.display()
+                        ),
+                        &connection.sender,
+                    )
+                }
+
                 let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
-                    ws_root.as_path(),
+                    root.as_path(),
                     config.with_sysroot,
                     &config.cargo_features,
                 );
