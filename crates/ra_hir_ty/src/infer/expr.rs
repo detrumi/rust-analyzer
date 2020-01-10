@@ -16,7 +16,7 @@ use ra_syntax::ast::RangeOp;
 use crate::{
     autoderef,
     db::HirDatabase,
-    method_resolution, op,
+    method_resolution,
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
     ApplicationTy, CallableDef, InferTy, IntTy, Mutability, Obligation, Substs, TraitRef, Ty,
@@ -377,22 +377,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                 }
             }
-            Expr::BinaryOp { lhs, rhs, op } => match op {
-                Some(op) => {
-                    let lhs_expectation = match op {
-                        BinaryOp::LogicOp(..) => Expectation::has_type(Ty::simple(TypeCtor::Bool)),
-                        _ => Expectation::none(),
-                    };
-                    let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
-                    // FIXME: find implementation of trait corresponding to operation
-                    // symbol and resolve associated `Output` type
-                    let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty);
-                    let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
-
-                    // FIXME: similar as above, return ty is often associated trait type
-                    op::binary_op_return_ty(*op, rhs_ty)
+            Expr::BinaryOp { lhs, rhs: _rhs, op } => match op {
+                Some(BinaryOp::ArithOp(arith_op)) => {
+                    let lhs_ty = self.infer_expr(*lhs, &Expectation::none());
+                    self.resolve_associated_type(lhs_ty, self.resolve_ops_arith_output(*arith_op))
                 }
-                _ => Ty::Unknown,
+                Some(BinaryOp::LogicOp(_)) | Some(BinaryOp::CmpOp(_)) => Ty::simple(TypeCtor::Bool),
+                Some(BinaryOp::Assignment { .. }) => Ty::unit(),
+                None => Ty::Unknown,
             },
             Expr::Range { lhs, rhs, range_type } => {
                 let lhs_ty = lhs.map(|e| self.infer_expr_inner(e, &Expectation::none()));

@@ -24,7 +24,6 @@ mod autoderef;
 pub mod primitive;
 pub mod traits;
 pub mod method_resolution;
-mod op;
 mod lower;
 mod infer;
 pub mod display;

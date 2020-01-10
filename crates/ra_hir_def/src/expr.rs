@@ -193,6 +193,23 @@ pub enum ArithOp {
     BitAnd,
 }
 
+impl ArithOp {
+    pub fn corresponding_trait<'a>(self) -> &'a str {
+        match self {
+            ArithOp::Add => "Add",
+            ArithOp::Mul => "Mul",
+            ArithOp::Sub => "Sub",
+            ArithOp::Div => "Div",
+            ArithOp::Rem => "Rem",
+            ArithOp::Shl => "Shl",
+            ArithOp::Shr => "Shr",
+            ArithOp::BitXor => "BitXor",
+            ArithOp::BitOr => "BitOr",
+            ArithOp::BitAnd => "BitAnd",
+        }
+    }
+}
+
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {

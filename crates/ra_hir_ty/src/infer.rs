@@ -23,7 +23,7 @@ use rustc_hash::FxHashMap;
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData},
-    expr::{BindingAnnotation, ExprId, PatId},
+    expr::{ArithOp, BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -509,6 +509,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
         let trait_ = self.resolve_lang_item("not")?.as_trait()?;
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_ops_arith_output(&self, arith_op: ArithOp) -> Option<TypeAliasId> {
+        let trait_ = self.resolve_lang_item(arith_op.corresponding_trait())?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
