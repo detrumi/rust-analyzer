@@ -145,7 +145,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chalk-derive"
 version = "0.16.0-dev.0"
-source = "git+https://github.com/rust-lang/chalk#6a9fc667b76ec6e2995ad17878f23cdd0957c3b8"
+source = "git+https://github.com/detrumi/chalk?branch=chalk-writer-integration-workarounds#6c2b05ed9063b99f1c7d3f45c30bbc0dd5192644"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -156,7 +156,7 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.16.0-dev.0"
-source = "git+https://github.com/rust-lang/chalk#6a9fc667b76ec6e2995ad17878f23cdd0957c3b8"
+source = "git+https://github.com/detrumi/chalk?branch=chalk-writer-integration-workarounds#6c2b05ed9063b99f1c7d3f45c30bbc0dd5192644"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -167,7 +167,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.16.0-dev.0"
-source = "git+https://github.com/rust-lang/chalk#6a9fc667b76ec6e2995ad17878f23cdd0957c3b8"
+source = "git+https://github.com/detrumi/chalk?branch=chalk-writer-integration-workarounds#6c2b05ed9063b99f1c7d3f45c30bbc0dd5192644"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -176,7 +176,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.16.0-dev.0"
-source = "git+https://github.com/rust-lang/chalk#6a9fc667b76ec6e2995ad17878f23cdd0957c3b8"
+source = "git+https://github.com/detrumi/chalk?branch=chalk-writer-integration-workarounds#6c2b05ed9063b99f1c7d3f45c30bbc0dd5192644"
 dependencies = [
  "chalk-derive",
  "chalk-engine",

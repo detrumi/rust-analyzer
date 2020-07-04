@@ -27,8 +27,8 @@ test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"
 
-chalk-solve = { git = "https://github.com/rust-lang/chalk" }
-chalk-ir = { git = "https://github.com/rust-lang/chalk" }
+chalk-solve = { git = "https://github.com/detrumi/chalk", branch = "chalk-writer-integration-workarounds" }
+chalk-ir = { git = "https://github.com/detrumi/chalk", branch = "chalk-writer-integration-workarounds" }
 
 [dev-dependencies]
 insta = "0.16.0"

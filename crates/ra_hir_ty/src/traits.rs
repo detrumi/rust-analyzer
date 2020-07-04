@@ -182,7 +182,7 @@ fn solve(
     let logging_db = chalk_solve::logging_db::LoggingRustIrDatabase::new(context);
     println!("Chalk program:\n{}", logging_db);
 
-    let trait_impls = context.db.trait_impls_in_crate(krate);
+    let trait_impls = context.db.trait_impls_in_deps(krate);
     let ids = trait_impls.map.keys().map(|id| id.to_chalk(db).into());
 
     let mut out = String::new();
