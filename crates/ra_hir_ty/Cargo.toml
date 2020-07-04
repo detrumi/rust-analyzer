@@ -27,8 +27,8 @@ test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"
 
-chalk-solve = { version = "0.15.0" }
-chalk-ir = { version = "0.15.0" }
+chalk-solve = { git = "https://github.com/rust-lang/chalk" }
+chalk-ir = { git = "https://github.com/rust-lang/chalk" }
 
 [dev-dependencies]
 insta = "0.16.0"

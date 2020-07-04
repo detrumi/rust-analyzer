@@ -25,7 +25,7 @@ pub(super) mod tls;
 mod interner;
 mod mapping;
 
-pub(super) trait ToChalk {
+pub trait ToChalk {
     type Chalk;
     fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
     fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
@@ -219,6 +219,21 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // FIXME: implement closure support
         unimplemented!()
     }
+    fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
+        self.db.trait_data(from_chalk(self.db, trait_id)).name.to_string()
+    }
+    fn adt_name(&self, _struct_id: chalk_ir::AdtId<Interner>) -> String {
+        String::from("<adt_name>") // TODO
+    }
+    fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
+        format!("_assoc_type_{:?}", assoc_ty_id.0)
+    }
+    fn opaque_type_name(&self, _opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
+        String::from("opaque_type_name") // TODO
+    }
+    fn fn_def_name(&self, _fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
+        String::from("fn_def_name") // TODO
+    }
 }
 
 pub(crate) fn program_clauses_for_chalk_env_query(
@@ -355,11 +370,15 @@ pub(crate) fn struct_datum_query(
         phantom_data: false,
     };
     let struct_datum_bound = rust_ir::AdtDatumBound {
-        fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
+        variants: Vec::new(), // FIXME add fields (only relevant for auto traits)
         where_clauses,
     };
-    let struct_datum =
-        StructDatum { id: struct_id, binders: make_binders(struct_datum_bound, num_params), flags };
+    let struct_datum = StructDatum {
+        id: struct_id,
+        binders: make_binders(struct_datum_bound, num_params),
+        flags,
+        kind: chalk_solve::rust_ir::AdtKind::Struct,
+    };
     Arc::new(struct_datum)
 }
 

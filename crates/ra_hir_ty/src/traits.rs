@@ -14,7 +14,7 @@ use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty,
 
 use self::chalk::{from_chalk, Interner, ToChalk};
 
-pub(crate) mod chalk;
+pub mod chalk;
 mod builtin;
 
 // This controls the maximum size of types Chalk considers. If we set this too
@@ -26,10 +26,11 @@ mod builtin;
 /// This controls how much 'time' we give the Chalk solver before giving up.
 const CHALK_SOLVER_FUEL: i32 = 100;
 
+// TODO can we avoid making this public?
 #[derive(Debug, Copy, Clone)]
-struct ChalkContext<'a> {
-    db: &'a dyn HirDatabase,
-    krate: CrateId,
+pub struct ChalkContext<'a> {
+    pub db: &'a dyn HirDatabase,
+    pub krate: CrateId,
 }
 
 fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
@@ -177,6 +178,16 @@ fn solve(
     // extra sure we only use it for debugging
     let solution =
         if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
+
+    let logging_db = chalk_solve::logging_db::LoggingRustIrDatabase::new(context);
+    println!("Chalk program:\n{}", logging_db);
+
+    let trait_impls = context.db.trait_impls_in_crate(krate);
+    let ids = trait_impls.map.keys().map(|id| id.to_chalk(db).into());
+
+    let mut out = String::new();
+    chalk_solve::display::write_items(&mut out, &context, ids).unwrap();
+    println!("Chalk program:\n{}", out);
 
     solution
 }

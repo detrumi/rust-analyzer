@@ -43,7 +43,7 @@ impl TyFingerprint {
 #[derive(Debug, Eq, PartialEq)]
 pub struct TraitImpls {
     // If the `Option<TyFingerprint>` is `None`, the impl may apply to any self type.
-    map: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
+    pub map: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
 }
 
 impl TraitImpls {

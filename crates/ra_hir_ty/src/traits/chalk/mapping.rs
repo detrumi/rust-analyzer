@@ -492,6 +492,7 @@ impl ToChalk for GenericPredicate {
                 // we shouldn't get these from Chalk
                 panic!("encountered LifetimeOutlives from Chalk")
             }
+            chalk_ir::WhereClause::TypeOutlives(_) => unimplemented!(),
         }
     }
 }
