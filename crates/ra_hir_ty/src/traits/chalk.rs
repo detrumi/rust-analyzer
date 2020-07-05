@@ -226,13 +226,13 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         String::from("<adt_name>") // TODO
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
-        format!("Assoc_type_{:?}", assoc_ty_id.0)
+        format!("Assoc_type_{:?}", assoc_ty_id.0) // TODO
     }
     fn opaque_type_name(&self, _opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
-        String::from("opaque_type_name") // TODO
+        String::from("<opaque_type_name>") // TODO
     }
     fn fn_def_name(&self, _fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
-        String::from("fn_def_name") // TODO
+        String::from("<fn_def_name>") // TODO
     }
 }
 

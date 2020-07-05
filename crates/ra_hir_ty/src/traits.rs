@@ -158,6 +158,25 @@ fn solve(
     log::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
 
+    let impls_in_deps = db.trait_impls_in_deps(krate);
+    let impls_in_crate = db.trait_impls_in_crate(krate);
+    let trait_ids = impls_in_deps.map.keys().chain(impls_in_crate.map.keys());
+    let mut ids: Vec<_> = trait_ids.map(|id| id.to_chalk(db).into()).collect();
+
+    let modules = &db.crate_def_map(krate).modules;
+    for (_idx, module) in modules.iter() {
+        let impls = module.scope.impls();
+        for impl_id in impls {
+            if db.impl_trait(impl_id).is_some() {
+                ids.push(Impl::ImplDef(impl_id).to_chalk(db).into());
+            }
+        }
+    }
+
+    let mut out = String::new();
+    chalk_solve::display::write_items(&mut out, &context, ids).unwrap();
+    println!("Chalk program:\n{}", out);
+
     let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
 
     let should_continue = || {
@@ -181,13 +200,6 @@ fn solve(
 
     let logging_db = chalk_solve::logging_db::LoggingRustIrDatabase::new(context);
     println!("Chalk program:\n{}", logging_db);
-
-    let trait_impls = context.db.trait_impls_in_deps(krate);
-    let ids = trait_impls.map.keys().map(|id| id.to_chalk(db).into());
-
-    let mut out = String::new();
-    chalk_solve::display::write_items(&mut out, &context, ids).unwrap();
-    println!("Chalk program:\n{}", out);
 
     solution
 }
