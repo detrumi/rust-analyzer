@@ -353,7 +353,7 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_constraints<E>(
         &self,
-        _data: impl IntoIterator<Item = Result<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>, E>>,
+        data: impl IntoIterator<Item = Result<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>, E>>,
     ) -> Result<Self::InternedConstraints, E> {
         Ok(vec![]) // TODO
     }

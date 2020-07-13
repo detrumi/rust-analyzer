@@ -52,7 +52,7 @@ hir = { path = "../ra_hir", package = "ra_hir" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 ra_proc_macro_srv = { path = "../ra_proc_macro_srv" }
-chalk-solve = { git = "https://github.com/detrumi/chalk", branch = "chalk-writer-integration-workarounds" }
+chalk-solve = { path = "../../../chalk/chalk-solve" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.8"
