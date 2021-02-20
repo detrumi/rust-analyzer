@@ -332,7 +332,16 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         format!("Opaque_{}", opaque_ty_id.0)
     }
     fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
-        format!("fn_{}", fn_def_id.0)
+        let def: CallableDefId = from_chalk(self.db, fn_def_id);
+        let name = match def {
+            CallableDefId::FunctionId(ff) => self.db.function_data(ff).name.clone(),
+            CallableDefId::StructId(s) => self.db.struct_data(s).name.clone(),
+            CallableDefId::EnumVariantId(e) => {
+                let enum_data = self.db.enum_data(e.parent);
+                enum_data.variants[e.local_id].name.clone()
+            }
+        };
+        format!("{}", name)
     }
     fn generator_datum(
         &self,
