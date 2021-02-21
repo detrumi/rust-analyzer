@@ -329,7 +329,16 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         self.db.type_alias_data(id).name.to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
-        format!("Opaque_{}", opaque_ty_id.0)
+        let id = from_chalk(self.db, opaque_ty_id);
+        match id {
+            crate::OpaqueTyId::ReturnTypeImplTrait(ff, idx) => {
+                let name = &self.db.function_data(ff).name;
+                format!("Opaque_{}_{}", name, idx)
+            }
+            crate::OpaqueTyId::AsyncBlockTypeImplTrait(_, _) => {
+                format!("Opaque_async_{}", opaque_ty_id.0)
+            }
+        }
     }
     fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
         let def: CallableDefId = from_chalk(self.db, fn_def_id);
